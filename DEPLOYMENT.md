@@ -66,17 +66,26 @@ az storage container create \
 echo "Storage Account: $STORAGE_ACCOUNT_NAME"
 ```
 
-### Update versions.tf
+### Configure Backend for Your Environment
 
-Edit `versions.tf` and uncomment the backend block:
+Copy the appropriate backend configuration:
 
-```hcl
-backend "azurerm" {
-  resource_group_name  = "rg-terraform-state"
-  storage_account_name = "tfstateXXXXXXXX"  # Replace with your storage account
-  container_name       = "tfstate"
-  key                  = "hub-spoke-dev.tfstate"  # Change for each environment
-}
+```bash
+# For dev environment
+cp environments/backend-dev.tf backend.tf
+
+# For prod environment
+cp environments/backend-prod.tf backend.tf
+```
+
+Then edit `backend.tf` and update the `storage_account_name`:
+
+```bash
+# Edit backend.tf
+vim backend.tf
+
+# Update this line:
+storage_account_name = "tfstateXXXXXXXX"  # Replace with your actual storage account name
 ```
 
 ## 🏗️ Step 3: Initialize Terraform

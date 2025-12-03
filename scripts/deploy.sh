@@ -54,26 +54,43 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
+# Configure backend
+echo -e "${BLUE}Step 3: Configuring backend for ${ENVIRONMENT}...${NC}"
+if [ -f backend.tf ]; then
+    echo -e "${YELLOW}Existing backend.tf found${NC}"
+    read -p "Replace with ${ENVIRONMENT} backend? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        cp "environments/backend-${ENVIRONMENT}.tf" backend.tf
+        echo -e "${GREEN}✓ Backend configured for ${ENVIRONMENT}${NC}"
+    fi
+else
+    cp "environments/backend-${ENVIRONMENT}.tf" backend.tf
+    echo -e "${GREEN}✓ Backend configured for ${ENVIRONMENT}${NC}"
+fi
+echo -e "${YELLOW}Make sure to update storage_account_name in backend.tf!${NC}"
+echo ""
+
 # Initialize Terraform
-echo -e "${BLUE}Step 3: Initializing Terraform...${NC}"
+echo -e "${BLUE}Step 4: Initializing Terraform...${NC}"
 terraform init
 echo -e "${GREEN}✓ Terraform initialized${NC}"
 echo ""
 
 # Validate configuration
-echo -e "${BLUE}Step 4: Validating configuration...${NC}"
+echo -e "${BLUE}Step 5: Validating configuration...${NC}"
 terraform validate
 echo -e "${GREEN}✓ Configuration valid${NC}"
 echo ""
 
 # Format code
-echo -e "${BLUE}Step 5: Formatting code...${NC}"
+echo -e "${BLUE}Step 6: Formatting code...${NC}"
 terraform fmt -recursive
 echo -e "${GREEN}✓ Code formatted${NC}"
 echo ""
 
 # Generate plan
-echo -e "${BLUE}Step 6: Generating execution plan...${NC}"
+echo -e "${BLUE}Step 7: Generating execution plan...${NC}"
 terraform plan -var-file="environments/${ENVIRONMENT}.tfvars" -out="${ENVIRONMENT}.tfplan"
 echo -e "${GREEN}✓ Plan generated${NC}"
 echo ""
@@ -112,7 +129,7 @@ fi
 
 # Apply plan
 echo ""
-echo -e "${BLUE}Step 7: Applying configuration...${NC}"
+echo -e "${BLUE}Step 8: Applying configuration...${NC}"
 echo -e "${YELLOW}This will take approximately $ESTIMATE${NC}"
 echo ""
 

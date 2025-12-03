@@ -25,7 +25,8 @@ help:
 	@echo "$(BLUE)Azure Hub-and-Spoke Terraform - Available Commands$(NC)"
 	@echo ""
 	@echo "$(GREEN)Setup Commands:$(NC)"
-	@echo "  make init                 - Initialize Terraform"
+	@echo "  make init-dev             - Initialize with dev backend"
+	@echo "  make init-prod            - Initialize with prod backend"
 	@echo "  make validate             - Validate Terraform configuration"
 	@echo "  make format               - Format Terraform files"
 	@echo "  make lint                 - Lint Terraform code"
@@ -50,9 +51,29 @@ help:
 	@echo ""
 	@echo "$(YELLOW)Example: make dev-plan$(NC)"
 
-## init: Initialize Terraform
+## init: Initialize Terraform (use init-dev or init-prod for environment-specific)
 init:
 	@echo "$(BLUE)Initializing Terraform...$(NC)"
+	@if [ ! -f backend.tf ]; then \
+		echo "$(YELLOW)Warning: backend.tf not found!$(NC)"; \
+		echo "$(YELLOW)Run 'make init-dev' or 'make init-prod' to set up backend$(NC)"; \
+	fi
+	terraform init
+
+## init-dev: Initialize with dev backend
+init-dev:
+	@echo "$(BLUE)Setting up dev backend...$(NC)"
+	cp environments/backend-dev.tf backend.tf
+	@echo "$(GREEN)✓ Backend configured for dev$(NC)"
+	@echo "$(YELLOW)Remember to update storage_account_name in backend.tf!$(NC)"
+	terraform init
+
+## init-prod: Initialize with prod backend
+init-prod:
+	@echo "$(BLUE)Setting up prod backend...$(NC)"
+	cp environments/backend-prod.tf backend.tf
+	@echo "$(GREEN)✓ Backend configured for prod$(NC)"
+	@echo "$(YELLOW)Remember to update storage_account_name in backend.tf!$(NC)"
 	terraform init
 
 ## validate: Validate Terraform configuration
@@ -98,7 +119,7 @@ create-backend:
 # =============================================================================
 
 ## dev-plan: Generate execution plan for dev environment
-dev-plan: init validate
+dev-plan: init-dev validate
 	@echo "$(BLUE)Planning dev environment deployment...$(NC)"
 	terraform plan -var-file="environments/dev.tfvars" -out=dev.tfplan
 
@@ -132,7 +153,7 @@ dev-refresh:
 # =============================================================================
 
 ## prod-plan: Generate execution plan for prod environment
-prod-plan: init validate
+prod-plan: init-prod validate
 	@echo "$(BLUE)Planning prod environment deployment...$(NC)"
 	terraform plan -var-file="environments/prod.tfvars" -out=prod.tfplan
 

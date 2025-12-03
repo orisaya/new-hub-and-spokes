@@ -14,6 +14,7 @@ This project creates a production-ready Azure hub-and-spoke network architecture
 - [Deployment Guide](#deployment-guide)
 - [Project Structure](#project-structure)
 - [Configuration](#configuration)
+- [Backend Configuration](BACKEND-SETUP.md) 📄
 - [Troubleshooting](#troubleshooting)
 - [Cost Estimation](#cost-estimation)
 - [Security Best Practices](#security-best-practices)
@@ -160,17 +161,24 @@ az login
 az account set --subscription "Your Subscription Name"
 ```
 
-### 2. Configure Backend (Optional but Recommended)
+### 2. Configure Backend (Recommended)
 
-Edit `versions.tf` and uncomment the backend configuration:
+Each environment has its own backend configuration:
 
-```hcl
-backend "azurerm" {
-  resource_group_name  = "your-state-rg"
-  storage_account_name = "yourstateaccount"
-  container_name       = "tfstate"
-  key                  = "hub-spoke.tfstate"
-}
+```bash
+# For dev environment
+cp environments/backend-dev.tf backend.tf
+
+# OR for prod environment
+cp environments/backend-prod.tf backend.tf
+
+# Then edit backend.tf and update the storage_account_name
+vim backend.tf
+```
+
+Create the storage account first:
+```bash
+./scripts/create-backend.sh
 ```
 
 ### 3. Deploy Development Environment
@@ -229,7 +237,9 @@ az aks get-credentials --resource-group rg-hubspoke-prod-uks-prod --name aks-hub
 │
 ├── environments/              # Environment-specific configs
 │   ├── dev.tfvars            # Development settings
-│   └── prod.tfvars           # Production settings
+│   ├── prod.tfvars           # Production settings
+│   ├── backend-dev.tf        # Dev backend configuration
+│   └── backend-prod.tf       # Prod backend configuration
 │
 ├── scripts/                   # Helper scripts
 │   ├── deploy.sh             # Deployment script
