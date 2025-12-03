@@ -9,8 +9,8 @@ terraform {
   required_version = ">= 1.6.0"
 
   # Backend configuration is environment-specific
-  # See environments/backend-dev.tf or environments/backend-prod.tf
-  # Copy the appropriate file to the root directory before running terraform init
+  # Located in environments/dev/backend.tf and environments/prod/backend.tf
+  # Use: terraform init -backend-config=environments/dev/backend.tf
 
   # Required providers (like apps we need installed)
   required_providers {

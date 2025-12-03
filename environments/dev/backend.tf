@@ -3,10 +3,8 @@
 # ============================================================================
 # This file configures where Terraform stores state for the DEV environment
 #
-# IMPORTANT: Copy this file to the root directory as "backend.tf" before
-# running terraform init for the dev environment
-#
-# Command: cp environments/backend-dev.tf backend.tf
+# This file is located in environments/dev/ and will be automatically used
+# when you run terraform commands with -backend-config flag
 
 terraform {
   backend "azurerm" {
@@ -51,11 +49,14 @@ terraform {
 #    No additional configuration needed
 #
 # 4. BACKEND INITIALIZATION:
-#    - Copy this file: cp environments/backend-dev.tf backend.tf
-#    - Update storage_account_name with your actual storage account
-#    - Run: terraform init
+#    From project root:
+#    - terraform init -backend-config=environments/dev/backend.tf
+#    Or use Makefile:
+#    - make init-dev
 #
-# 5. SWITCHING ENVIRONMENTS:
-#    To switch from dev to prod:
-#    - Run: terraform init -reconfigure
-#    - Or delete .terraform directory and re-init
+# 5. DEPLOYMENT:
+#    - terraform plan -var-file=environments/dev/terraform.tfvars
+#    - terraform apply -var-file=environments/dev/terraform.tfvars
+#    Or use Makefile:
+#    - make dev-plan
+#    - make dev-apply

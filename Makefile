@@ -63,18 +63,16 @@ init:
 ## init-dev: Initialize with dev backend
 init-dev:
 	@echo "$(BLUE)Setting up dev backend...$(NC)"
-	cp environments/backend-dev.tf backend.tf
-	@echo "$(GREEN)✓ Backend configured for dev$(NC)"
-	@echo "$(YELLOW)Remember to update storage_account_name in backend.tf!$(NC)"
-	terraform init
+	@echo "$(YELLOW)Remember to update storage_account_name in environments/dev/backend.tf!$(NC)"
+	terraform init -backend-config=environments/dev/backend.tf -reconfigure
+	@echo "$(GREEN)✓ Initialized with dev backend$(NC)"
 
 ## init-prod: Initialize with prod backend
 init-prod:
 	@echo "$(BLUE)Setting up prod backend...$(NC)"
-	cp environments/backend-prod.tf backend.tf
-	@echo "$(GREEN)✓ Backend configured for prod$(NC)"
-	@echo "$(YELLOW)Remember to update storage_account_name in backend.tf!$(NC)"
-	terraform init
+	@echo "$(YELLOW)Remember to update storage_account_name in environments/prod/backend.tf!$(NC)"
+	terraform init -backend-config=environments/prod/backend.tf -reconfigure
+	@echo "$(GREEN)✓ Initialized with prod backend$(NC)"
 
 ## validate: Validate Terraform configuration
 validate:
@@ -121,7 +119,7 @@ create-backend:
 ## dev-plan: Generate execution plan for dev environment
 dev-plan: init-dev validate
 	@echo "$(BLUE)Planning dev environment deployment...$(NC)"
-	terraform plan -var-file="environments/dev.tfvars" -out=dev.tfplan
+	terraform plan -var-file="environments/dev/terraform.tfvars" -out=dev.tfplan
 
 ## dev-apply: Apply dev environment configuration
 dev-apply: dev-plan
@@ -136,7 +134,7 @@ dev-destroy:
 	@echo "$(RED)WARNING: This will destroy all dev resources!$(NC)"
 	@echo "$(YELLOW)Press Ctrl+C to cancel or wait 5 seconds...$(NC)"
 	@sleep 5
-	terraform destroy -var-file="environments/dev.tfvars"
+	terraform destroy -var-file="environments/dev/terraform.tfvars"
 
 ## dev-output: Show dev environment outputs
 dev-output:
@@ -146,7 +144,7 @@ dev-output:
 ## dev-refresh: Refresh dev state
 dev-refresh:
 	@echo "$(BLUE)Refreshing dev state...$(NC)"
-	terraform refresh -var-file="environments/dev.tfvars"
+	terraform refresh -var-file="environments/dev/terraform.tfvars"
 
 # =============================================================================
 # PRODUCTION ENVIRONMENT TARGETS
@@ -155,7 +153,7 @@ dev-refresh:
 ## prod-plan: Generate execution plan for prod environment
 prod-plan: init-prod validate
 	@echo "$(BLUE)Planning prod environment deployment...$(NC)"
-	terraform plan -var-file="environments/prod.tfvars" -out=prod.tfplan
+	terraform plan -var-file="environments/prod/terraform.tfvars" -out=prod.tfplan
 
 ## prod-apply: Apply prod environment configuration
 prod-apply:
@@ -177,7 +175,7 @@ prod-destroy:
 	@echo "$(YELLOW)Type 'DELETE-PROD' to confirm:$(NC) "
 	@read confirm; \
 	if [ "$$confirm" = "DELETE-PROD" ]; then \
-		terraform destroy -var-file="environments/prod.tfvars"; \
+		terraform destroy -var-file="environments/prod/terraform.tfvars"; \
 	else \
 		echo "$(GREEN)Cancelled.$(NC)"; \
 	fi
@@ -190,7 +188,7 @@ prod-output:
 ## prod-refresh: Refresh prod state
 prod-refresh:
 	@echo "$(BLUE)Refreshing prod state...$(NC)"
-	terraform refresh -var-file="environments/prod.tfvars"
+	terraform refresh -var-file="environments/prod/terraform.tfvars"
 
 # =============================================================================
 # UTILITY TARGETS
