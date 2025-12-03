@@ -1,0 +1,286 @@
+# ============================================================================
+# REUSABLE WORKFLOW - TERRAFORM OPERATIONS
+# ============================================================================
+# This workflow can be called by other workflows to perform Terraform operations
+# It handles authentication, setup, and execution
+
+name: Terraform Operations
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Environment to deploy (dev or prod)'
+        required: true
+        type: string
+      terraform_action:
+        description: 'Terraform action (plan, apply, destroy)'
+        required: true
+        type: string
+      working_directory:
+        description: 'Working directory for Terraform'
+        required: false
+        type: string
+        default: '.'
+      upload_plan:
+        description: 'Upload plan artifact'
+        required: false
+        type: boolean
+        default: false
+      comment_pr:
+        description: 'Comment plan on PR'
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      plan_output:
+        description: 'Terraform plan output'
+        value: ${{ jobs.terraform.outputs.plan_output }}
+      plan_exitcode:
+        description: 'Terraform plan exit code'
+        value: ${{ jobs.terraform.outputs.plan_exitcode }}
+
+permissions:
+  id-token: write   # Required for Azure OIDC
+  contents: read    # Required to checkout code
+  pull-requests: write  # Required to comment on PRs
+  issues: write     # Required for issue creation
+
+jobs:
+  terraform:
+    name: Terraform ${{ inputs.terraform_action }} - ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    outputs:
+      plan_output: ${{ steps.plan.outputs.stdout }}
+      plan_exitcode: ${{ steps.plan.outputs.exitcode }}
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    steps:
+      # ========================================================================
+      # STEP 1: Checkout Code
+      # ========================================================================
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ========================================================================
+      # STEP 2: Setup Terraform
+      # ========================================================================
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+          terraform_wrapper: true  # Enables output capturing
+
+      # ========================================================================
+      # STEP 3: Azure Login with OIDC
+      # ========================================================================
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ========================================================================
+      # STEP 4: Terraform Format Check
+      # ========================================================================
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      # ========================================================================
+      # STEP 5: Terraform Init
+      # ========================================================================
+      - name: Terraform Init
+        id: init
+        run: |
+          echo "Initializing Terraform with ${{ inputs.environment }} backend..."
+          terraform init \
+            -backend-config=environments/${{ inputs.environment }}/backend.tf \
+            -reconfigure
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
+
+      # ========================================================================
+      # STEP 6: Terraform Validate
+      # ========================================================================
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+
+      # ========================================================================
+      # STEP 7: Setup TFLint
+      # ========================================================================
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      # ========================================================================
+      # STEP 8: Run TFLint
+      # ========================================================================
+      - name: Run TFLint
+        id: tflint
+        run: |
+          tflint --init
+          tflint --format compact
+        continue-on-error: true
+
+      # ========================================================================
+      # STEP 9: Setup Infracost
+      # ========================================================================
+      - name: Setup Infracost
+        if: inputs.terraform_action == 'plan'
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      # ========================================================================
+      # STEP 10: Terraform Plan
+      # ========================================================================
+      - name: Terraform Plan
+        id: plan
+        if: inputs.terraform_action == 'plan' || inputs.terraform_action == 'apply'
+        run: |
+          terraform plan \
+            -var-file=environments/${{ inputs.environment }}/terraform.tfvars \
+            -out=${{ inputs.environment }}.tfplan \
+            -no-color \
+            -detailed-exitcode || echo "exitcode=$?" >> $GITHUB_OUTPUT
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
+        continue-on-error: true
+
+      # ========================================================================
+      # STEP 11: Upload Plan Artifact
+      # ========================================================================
+      - name: Upload Terraform Plan
+        if: inputs.upload_plan && (inputs.terraform_action == 'plan' || inputs.terraform_action == 'apply')
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.environment }}-tfplan
+          path: ${{ inputs.working_directory }}/${{ inputs.environment }}.tfplan
+          retention-days: 30
+
+      # ========================================================================
+      # STEP 12: Generate Infracost Report
+      # ========================================================================
+      - name: Generate Infracost JSON
+        if: inputs.terraform_action == 'plan'
+        run: |
+          infracost breakdown \
+            --path=${{ inputs.environment }}.tfplan \
+            --format=json \
+            --out-file=/tmp/infracost-${{ inputs.environment }}.json
+        continue-on-error: true
+
+      # ========================================================================
+      # STEP 13: Post Infracost Comment
+      # ========================================================================
+      - name: Post Infracost Comment
+        if: inputs.comment_pr && inputs.terraform_action == 'plan' && github.event_name == 'pull_request'
+        run: |
+          infracost comment github \
+            --path=/tmp/infracost-${{ inputs.environment }}.json \
+            --repo=$GITHUB_REPOSITORY \
+            --github-token=${{ secrets.GITHUB_TOKEN }} \
+            --pull-request=${{ github.event.pull_request.number }} \
+            --behavior=update
+        continue-on-error: true
+
+      # ========================================================================
+      # STEP 14: Create Plan Summary
+      # ========================================================================
+      - name: Create Plan Summary
+        if: inputs.terraform_action == 'plan'
+        run: |
+          echo "### Terraform Plan Summary - ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Format Check:** ${{ steps.fmt.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Validation:** ${{ steps.validate.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "**TFLint:** ${{ steps.tflint.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Plan:** ${{ steps.plan.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f ${{ inputs.environment }}.tfplan ]; then
+            terraform show -no-color ${{ inputs.environment }}.tfplan | head -100 >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # ========================================================================
+      # STEP 15: Backup State File (Before Apply)
+      # ========================================================================
+      - name: Backup Terraform State
+        if: inputs.terraform_action == 'apply' && inputs.environment == 'prod'
+        run: |
+          DATE=$(date +%Y%m%d-%H%M%S)
+          az storage blob download \
+            --account-name ${{ secrets.STATE_STORAGE_ACCOUNT }} \
+            --container-name tfstate \
+            --name hub-spoke-${{ inputs.environment }}.tfstate \
+            --file /tmp/backup-${DATE}.tfstate \
+            --auth-mode login || echo "No existing state to backup"
+
+          if [ -f /tmp/backup-${DATE}.tfstate ]; then
+            az storage blob upload \
+              --account-name ${{ secrets.STATE_STORAGE_ACCOUNT }} \
+              --container-name tfstate-backups \
+              --name hub-spoke-${{ inputs.environment }}-${DATE}.tfstate \
+              --file /tmp/backup-${DATE}.tfstate \
+              --auth-mode login
+            echo "✅ State file backed up to tfstate-backups/hub-spoke-${{ inputs.environment }}-${DATE}.tfstate"
+          fi
+        continue-on-error: true
+
+      # ========================================================================
+      # STEP 16: Terraform Apply
+      # ========================================================================
+      - name: Terraform Apply
+        if: inputs.terraform_action == 'apply'
+        run: |
+          terraform apply \
+            -auto-approve \
+            -no-color \
+            ${{ inputs.environment }}.tfplan
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
+
+      # ========================================================================
+      # STEP 17: Terraform Destroy
+      # ========================================================================
+      - name: Terraform Destroy
+        if: inputs.terraform_action == 'destroy'
+        run: |
+          terraform destroy \
+            -var-file=environments/${{ inputs.environment }}/terraform.tfvars \
+            -auto-approve \
+            -no-color
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
+
+      # ========================================================================
+      # STEP 18: Terraform Output
+      # ========================================================================
+      - name: Capture Terraform Outputs
+        if: inputs.terraform_action == 'apply'
+        id: output
+        run: |
+          echo "### Terraform Outputs - ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          terraform output >> $GITHUB_STEP_SUMMARY

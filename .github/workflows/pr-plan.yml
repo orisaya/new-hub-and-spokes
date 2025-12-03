@@ -1,0 +1,137 @@
+# ============================================================================
+# PULL REQUEST WORKFLOW - TERRAFORM PLAN
+# ============================================================================
+# Triggered on PRs to develop or main branches
+# Generates Terraform plans and posts them as PR comments
+
+name: PR - Terraform Plan
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+    paths:
+      - '**.tf'
+      - 'environments/**'
+      - '.github/workflows/**'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  # Determine which environment to plan for based on target branch
+  detect-environment:
+    name: Detect Environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.detect.outputs.environment }}
+    steps:
+      - name: Detect Target Environment
+        id: detect
+        run: |
+          if [[ "${{ github.base_ref }}" == "main" ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Print Environment
+        run: |
+          echo "### 🎯 Target Environment: ${{ steps.detect.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Base Branch:** ${{ github.base_ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Head Branch:** ${{ github.head_ref }}" >> $GITHUB_STEP_SUMMARY
+
+  # Run Terraform Plan
+  terraform-plan:
+    name: Plan Infrastructure Changes
+    needs: detect-environment
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      environment: ${{ needs.detect-environment.outputs.environment }}
+      terraform_action: plan
+      working_directory: .
+      upload_plan: true
+      comment_pr: true
+    secrets: inherit
+
+  # Comment Plan Results on PR
+  comment-plan:
+    name: Comment Plan Results
+    needs: [detect-environment, terraform-plan]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.detect-environment.outputs.environment }}-tfplan
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config=environments/${{ needs.detect-environment.outputs.environment }}/backend.tf \
+            -reconfigure
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Format Plan Output
+        id: show
+        run: |
+          PLAN_OUTPUT=$(terraform show -no-color ${{ needs.detect-environment.outputs.environment }}.tfplan | head -1000)
+          echo "plan_output<<EOF" >> $GITHUB_OUTPUT
+          echo "$PLAN_OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `### Terraform Plan Results - \`${{ needs.detect-environment.outputs.environment }}\` 🚀
+
+            #### Environment: \`${{ needs.detect-environment.outputs.environment }}\`
+            #### Terraform Initialization ⚙️ \`${{ needs.terraform-plan.result }}\`
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`terraform
+            ${{ steps.show.outputs.plan_output }}
+            \`\`\`
+
+            </details>
+
+            **Pusher:** @${{ github.actor }}
+            **Action:** ${{ github.event_name }}
+            **Working Directory:** \`.\`
+
+            *Plan generated on: ${new Date().toUTCString()}*
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })

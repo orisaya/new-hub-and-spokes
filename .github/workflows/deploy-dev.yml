@@ -1,0 +1,143 @@
+# ============================================================================
+# DEVELOPMENT DEPLOYMENT WORKFLOW
+# ============================================================================
+# Triggered on merge to develop branch
+# Automatically deploys to dev environment (no manual approval)
+
+name: Deploy to Development
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - '**.tf'
+      - 'environments/dev/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+    inputs:
+      terraform_action:
+        description: 'Terraform action to perform'
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+        default: 'apply'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  # Plan stage
+  terraform-plan:
+    name: Plan Dev Infrastructure
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.terraform_action != 'apply')
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      environment: dev
+      terraform_action: plan
+      working_directory: .
+      upload_plan: true
+      comment_pr: false
+    secrets: inherit
+
+  # Apply stage (auto-approved for dev)
+  terraform-apply:
+    name: Deploy Dev Infrastructure
+    needs: terraform-plan
+    if: |
+      always() &&
+      (needs.terraform-plan.result == 'success') &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.terraform_action == 'apply'))
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      environment: dev
+      terraform_action: apply
+      working_directory: .
+      upload_plan: false
+      comment_pr: false
+    secrets: inherit
+
+  # Destroy stage (manual workflow_dispatch only)
+  terraform-destroy:
+    name: Destroy Dev Infrastructure
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.terraform_action == 'destroy'
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      environment: dev
+      terraform_action: destroy
+      working_directory: .
+      upload_plan: false
+      comment_pr: false
+    secrets: inherit
+
+  # Post-deployment notification
+  notify-deployment:
+    name: Notify Deployment Status
+    needs: [terraform-apply]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Deployment Summary
+        run: |
+          echo "### 🚀 Development Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** dev" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ needs.terraform-apply.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.terraform-apply.result }}" == "success" ]]; then
+            echo "✅ **Deployment completed successfully!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Verify resources in Azure Portal" >> $GITHUB_STEP_SUMMARY
+            echo "2. Connect to AKS cluster:" >> $GITHUB_STEP_SUMMARY
+            echo '   ```bash' >> $GITHUB_STEP_SUMMARY
+            echo '   az aks get-credentials --resource-group rg-hubspoke-dev-uks-dev --name aks-hubspoke-dev-uks-dev' >> $GITHUB_STEP_SUMMARY
+            echo '   kubectl get nodes' >> $GITHUB_STEP_SUMMARY
+            echo '   ```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Deployment failed!**" >> $GITHUB_STEP_SUMMARY
+            echo "Check the logs above for details." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Create Issue on Failure
+        if: needs.terraform-apply.result == 'failure'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = '🚨 Dev Deployment Failed';
+            const body = `### Development Deployment Failure
+
+            **Workflow:** ${{ github.workflow }}
+            **Run:** ${{ github.run_id }}
+            **Triggered by:** @${{ github.actor }}
+            **Commit:** ${{ github.sha }}
+            **Branch:** ${{ github.ref_name }}
+
+            **Action Required:**
+            1. Review the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            2. Check Terraform state for consistency
+            3. Verify Azure resources manually
+            4. Fix the issue and retry deployment
+
+            **Workflow URL:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            `;
+
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['deployment-failure', 'dev', 'terraform']
+            });
