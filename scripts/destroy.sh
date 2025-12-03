@@ -44,7 +44,7 @@ echo ""
 
 # Show what will be destroyed
 echo -e "${BLUE}Checking resources to be destroyed...${NC}"
-terraform plan -destroy -var-file="environments/${ENVIRONMENT}.tfvars" | grep -E "Plan:|#"
+terraform plan -destroy -var-file="environments/${ENVIRONMENT}/terraform.tfvars" | grep -E "Plan:|#"
 echo ""
 
 # Extra confirmation for prod
@@ -91,7 +91,7 @@ echo -e "${BLUE}Starting destruction...${NC}"
 echo ""
 
 START_TIME=$(date +%s)
-terraform destroy -var-file="environments/${ENVIRONMENT}.tfvars" -auto-approve
+terraform destroy -var-file="environments/${ENVIRONMENT}/terraform.tfvars" -auto-approve
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
 MINUTES=$((DURATION / 60))

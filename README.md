@@ -163,45 +163,48 @@ az account set --subscription "Your Subscription Name"
 
 ### 2. Configure Backend (Recommended)
 
-Each environment has its own backend configuration:
+Create the storage account for state:
 
-```bash
-# For dev environment
-cp environments/backend-dev.tf backend.tf
-
-# OR for prod environment
-cp environments/backend-prod.tf backend.tf
-
-# Then edit backend.tf and update the storage_account_name
-vim backend.tf
-```
-
-Create the storage account first:
 ```bash
 ./scripts/create-backend.sh
+```
+
+Each environment has its own backend configuration in its folder:
+
+```bash
+# Edit the dev backend configuration
+vim environments/dev/backend.tf
+# Update: storage_account_name = "tfstateXXXXXXXX"
+
+# OR edit the prod backend configuration
+vim environments/prod/backend.tf
+# Update: storage_account_name = "tfstateXXXXXXXX"
 ```
 
 ### 3. Deploy Development Environment
 
 ```bash
-# Initialize Terraform
-terraform init
+# Initialize Terraform with dev backend
+terraform init -backend-config=environments/dev/backend.tf
 
 # Review what will be created
-terraform plan -var-file="environments/dev.tfvars"
+terraform plan -var-file=environments/dev/terraform.tfvars
 
 # Create the infrastructure
-terraform apply -var-file="environments/dev.tfvars"
+terraform apply -var-file=environments/dev/terraform.tfvars
 ```
 
 ### 4. Deploy Production Environment
 
 ```bash
+# Initialize Terraform with prod backend
+terraform init -backend-config=environments/prod/backend.tf -reconfigure
+
 # Review production plan
-terraform plan -var-file="environments/prod.tfvars"
+terraform plan -var-file=environments/prod/terraform.tfvars
 
 # Create production infrastructure
-terraform apply -var-file="environments/prod.tfvars"
+terraform apply -var-file=environments/prod/terraform.tfvars
 ```
 
 ### 5. Connect to Your AKS Cluster
@@ -236,10 +239,12 @@ az aks get-credentials --resource-group rg-hubspoke-prod-uks-prod --name aks-hub
 │   └── security/             # Managed identities, RBAC
 │
 ├── environments/              # Environment-specific configs
-│   ├── dev.tfvars            # Development settings
-│   ├── prod.tfvars           # Production settings
-│   ├── backend-dev.tf        # Dev backend configuration
-│   └── backend-prod.tf       # Prod backend configuration
+│   ├── dev/                  # Development environment
+│   │   ├── backend.tf        #   Backend configuration
+│   │   └── terraform.tfvars  #   Variable values
+│   └── prod/                 # Production environment
+│       ├── backend.tf        #   Backend configuration
+│       └── terraform.tfvars  #   Variable values
 │
 ├── scripts/                   # Helper scripts
 │   ├── deploy.sh             # Deployment script
