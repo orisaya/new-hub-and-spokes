@@ -1,0 +1,50 @@
+# ============================================================================
+# TERRAFORM VARIABLES EXAMPLE
+# ============================================================================
+# Copy this file to terraform.tfvars and customize for your needs
+# Or use environment-specific files: environments/dev.tfvars or environments/prod.tfvars
+
+# General Settings
+environment  = "dev"      # dev, staging, or prod
+location     = "uksouth"  # Azure region
+project_name = "hubspoke" # Project name (keep short)
+
+# Tags (customize these)
+tags = {
+  Environment = "Development"
+  ManagedBy   = "Terraform"
+  Project     = "HubSpoke"
+  CostCenter  = "Engineering"
+  Owner       = "Your Team"
+}
+
+# Firewall Settings
+firewall_sku_tier    = "Basic" # Basic, Standard, or Premium
+enable_firewall_logs = true
+
+# AKS Settings
+aks_kubernetes_version = "1.28"
+
+dev_aks_node_count = 2
+dev_aks_node_size  = "Standard_D2s_v3"
+
+prod_aks_node_count = 3
+prod_aks_node_size  = "Standard_D4s_v3"
+
+enable_aks_auto_scaling = true
+aks_min_node_count      = 1
+aks_max_node_count      = 10
+
+# Shared Services Settings
+acr_sku                   = "Standard"
+key_vault_sku             = "standard"
+enable_acr_geo_replication = false
+
+# Security Settings
+enable_azure_policy      = true
+enable_private_endpoints = true
+allowed_ssh_sources      = []
+
+# Monitoring Settings
+enable_log_analytics = true
+log_retention_days   = 30
