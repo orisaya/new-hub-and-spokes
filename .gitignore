@@ -19,6 +19,10 @@ crash.*.log
 !terraform.tfvars.example
 !environments/*.tfvars
 
+# Exclude backend.tf (environment-specific, copy from environments/)
+backend.tf
+!backend.tf.example
+
 # Ignore override files as they are usually used to override resources locally
 override.tf
 override.tf.json

@@ -1,0 +1,41 @@
+# ============================================================================
+# BACKEND CONFIGURATION - EXAMPLE
+# ============================================================================
+# This is an example backend configuration file
+#
+# To use:
+# 1. Copy the appropriate environment file to backend.tf:
+#    - For dev:  cp environments/backend-dev.tf backend.tf
+#    - For prod: cp environments/backend-prod.tf backend.tf
+#
+# 2. Update the storage_account_name with your actual storage account
+#
+# 3. Run terraform init
+#
+# ============================================================================
+
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "rg-terraform-state"
+    storage_account_name = "tfstateXXXXXXXX"  # Replace with your storage account
+    container_name       = "tfstate"
+    key                  = "hub-spoke-ENV.tfstate"  # Replace ENV with dev or prod
+  }
+}
+
+# ============================================================================
+# ALTERNATIVE: Local Backend (for testing only)
+# ============================================================================
+# If you want to use local state instead of Azure Storage:
+#
+# terraform {
+#   backend "local" {
+#     path = "terraform.tfstate"
+#   }
+# }
+#
+# WARNING: Local backend is NOT recommended for production use!
+# - No state locking (risk of corruption)
+# - No team collaboration
+# - No backup/versioning
+# - State file stored locally (can be lost)

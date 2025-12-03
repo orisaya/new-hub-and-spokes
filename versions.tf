@@ -8,14 +8,9 @@ terraform {
   # We need Terraform version 1.6 or higher
   required_version = ">= 1.6.0"
 
-  # Configure where Terraform stores its state (memory of what's deployed)
-  # You said you already have a backend, so uncomment and configure this
-  # backend "azurerm" {
-  #   resource_group_name  = "your-state-rg"
-  #   storage_account_name = "yourstateaccount"
-  #   container_name       = "tfstate"
-  #   key                  = "hub-spoke.tfstate"
-  # }
+  # Backend configuration is environment-specific
+  # See environments/backend-dev.tf or environments/backend-prod.tf
+  # Copy the appropriate file to the root directory before running terraform init
 
   # Required providers (like apps we need installed)
   required_providers {
