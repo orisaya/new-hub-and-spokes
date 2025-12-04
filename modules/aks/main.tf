@@ -78,7 +78,8 @@ resource "azurerm_kubernetes_cluster" "main" {
 
   # Azure RBAC for Kubernetes authorization
   azure_active_directory_role_based_access_control {
-    azure_rbac_enabled = true # Use Azure RBAC instead of Kubernetes RBAC
+    managed            = true  # Required in v3.x, will default to true in v4.0
+    azure_rbac_enabled = true  # Use Azure RBAC instead of Kubernetes RBAC
   }
 
   # Azure Policy add-on (enforces policies on the cluster)
