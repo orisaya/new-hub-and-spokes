@@ -13,7 +13,7 @@ terraform {
 
     # Storage account name (must be globally unique)
     # Replace with your actual storage account name
-    storage_account_name = "tfstateXXXXXXXX"
+    storage_account_name = "tfstatec266c3b2"
 
     # Container name for blob storage
     container_name = "tfstate"
