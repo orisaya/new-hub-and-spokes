@@ -23,7 +23,7 @@ firewall_sku_tier    = "Basic" # Basic, Standard, or Premium
 enable_firewall_logs = true
 
 # AKS Settings
-aks_kubernetes_version = "1.30" # 1.28 is LTS-only (requires Premium tier)
+aks_kubernetes_version = "1.33" # 1.28 is LTS-only (requires Premium tier)
 
 dev_aks_node_count = 2
 dev_aks_node_size  = "Standard_D2s_v3"

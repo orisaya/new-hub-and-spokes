@@ -65,20 +65,20 @@ module "networking" {
   source = "./modules/networking"
 
   # Basic settings
-  location            = var.location
-  resource_group_hub  = azurerm_resource_group.hub.name
-  resource_group_dev  = azurerm_resource_group.dev.name
-  resource_group_prod = azurerm_resource_group.prod.name
+  location              = var.location
+  resource_group_hub    = azurerm_resource_group.hub.name
+  resource_group_dev    = azurerm_resource_group.dev.name
+  resource_group_prod   = azurerm_resource_group.prod.name
   resource_group_shared = azurerm_resource_group.shared.name
 
   # VNet settings
-  hub_vnet_name           = local.hub_vnet_name
-  hub_vnet_address_space  = var.hub_vnet_address_space
-  dev_vnet_name           = local.dev_vnet_name
-  dev_vnet_address_space  = var.dev_spoke_vnet_address_space
-  prod_vnet_name          = local.prod_vnet_name
-  prod_vnet_address_space = var.prod_spoke_vnet_address_space
-  shared_vnet_name        = local.shared_vnet_name
+  hub_vnet_name             = local.hub_vnet_name
+  hub_vnet_address_space    = var.hub_vnet_address_space
+  dev_vnet_name             = local.dev_vnet_name
+  dev_vnet_address_space    = var.dev_spoke_vnet_address_space
+  prod_vnet_name            = local.prod_vnet_name
+  prod_vnet_address_space   = var.prod_spoke_vnet_address_space
+  shared_vnet_name          = local.shared_vnet_name
   shared_vnet_address_space = var.shared_spoke_vnet_address_space
 
   # Subnet settings
@@ -108,7 +108,7 @@ module "firewall" {
   source = "./modules/firewall"
 
   # Basic settings
-  location           = var.location
+  location            = var.location
   resource_group_name = azurerm_resource_group.hub.name
 
   # Firewall settings
@@ -192,10 +192,10 @@ module "security" {
   source = "./modules/security"
 
   # Basic settings
-  location            = var.location
-  resource_group_hub  = azurerm_resource_group.hub.name
-  resource_group_dev  = azurerm_resource_group.dev.name
-  resource_group_prod = azurerm_resource_group.prod.name
+  location              = var.location
+  resource_group_hub    = azurerm_resource_group.hub.name
+  resource_group_dev    = azurerm_resource_group.dev.name
+  resource_group_prod   = azurerm_resource_group.prod.name
   resource_group_shared = azurerm_resource_group.shared.name
 
   # Managed identity names
@@ -223,7 +223,7 @@ module "shared_services" {
   source = "./modules/shared-services"
 
   # Basic settings
-  location           = var.location
+  location            = var.location
   resource_group_name = azurerm_resource_group.shared.name
 
   # Service names
@@ -235,9 +235,9 @@ module "shared_services" {
   kv_sku  = var.key_vault_sku
 
   # Network settings
-  vnet_id                      = module.networking.shared_vnet_id
-  private_endpoint_subnet_id   = module.networking.shared_private_endpoint_subnet_id
-  enable_private_endpoints     = var.enable_private_endpoints
+  vnet_id                    = module.networking.shared_vnet_id
+  private_endpoint_subnet_id = module.networking.shared_private_endpoint_subnet_id
+  enable_private_endpoints   = var.enable_private_endpoints
 
   # Managed identities (for RBAC)
   aks_dev_identity_id  = module.security.aks_dev_identity_principal_id
@@ -265,9 +265,9 @@ module "aks_dev" {
   source = "./modules/aks"
 
   # Basic settings
-  location           = var.location
+  location            = var.location
   resource_group_name = azurerm_resource_group.dev.name
-  environment        = "dev"
+  environment         = "dev"
 
   # Cluster settings
   cluster_name       = local.aks_dev_name
@@ -275,21 +275,21 @@ module "aks_dev" {
   dns_prefix         = "${local.aks_dev_name}-dns"
 
   # Network settings
-  vnet_id                    = module.networking.dev_vnet_id
-  aks_subnet_id              = module.networking.dev_aks_subnet_id
-  private_cluster_enabled    = true
+  vnet_id                 = module.networking.dev_vnet_id
+  aks_subnet_id           = module.networking.dev_aks_subnet_id
+  private_cluster_enabled = true
 
   # Node pool settings
-  node_count              = var.dev_aks_node_count
-  node_size               = var.dev_aks_node_size
-  enable_auto_scaling     = var.enable_aks_auto_scaling
-  min_node_count          = var.aks_min_node_count
-  max_node_count          = var.aks_max_node_count
-  availability_zones      = local.availability_zones
+  node_count          = var.dev_aks_node_count
+  node_size           = var.dev_aks_node_size
+  enable_auto_scaling = var.enable_aks_auto_scaling
+  min_node_count      = var.aks_min_node_count
+  max_node_count      = var.aks_max_node_count
+  availability_zones  = local.availability_zones
 
   # Managed identity
-  identity_id             = module.security.aks_dev_identity_id
-  identity_principal_id   = module.security.aks_dev_identity_principal_id
+  identity_id           = module.security.aks_dev_identity_id
+  identity_principal_id = module.security.aks_dev_identity_principal_id
 
   # ACR integration
   acr_id = module.shared_services.acr_id
@@ -320,9 +320,9 @@ module "aks_prod" {
   source = "./modules/aks"
 
   # Basic settings
-  location           = var.location
+  location            = var.location
   resource_group_name = azurerm_resource_group.prod.name
-  environment        = "prod"
+  environment         = "prod"
 
   # Cluster settings
   cluster_name       = local.aks_prod_name
@@ -330,21 +330,21 @@ module "aks_prod" {
   dns_prefix         = "${local.aks_prod_name}-dns"
 
   # Network settings
-  vnet_id                    = module.networking.prod_vnet_id
-  aks_subnet_id              = module.networking.prod_aks_subnet_id
-  private_cluster_enabled    = true
+  vnet_id                 = module.networking.prod_vnet_id
+  aks_subnet_id           = module.networking.prod_aks_subnet_id
+  private_cluster_enabled = true
 
   # Node pool settings
-  node_count              = var.prod_aks_node_count
-  node_size               = var.prod_aks_node_size
-  enable_auto_scaling     = var.enable_aks_auto_scaling
-  min_node_count          = var.aks_min_node_count
-  max_node_count          = var.aks_max_node_count
-  availability_zones      = local.availability_zones
+  node_count          = var.prod_aks_node_count
+  node_size           = var.prod_aks_node_size
+  enable_auto_scaling = var.enable_aks_auto_scaling
+  min_node_count      = var.aks_min_node_count
+  max_node_count      = var.aks_max_node_count
+  availability_zones  = local.availability_zones
 
   # Managed identity
-  identity_id             = module.security.aks_prod_identity_id
-  identity_principal_id   = module.security.aks_prod_identity_principal_id
+  identity_id           = module.security.aks_prod_identity_id
+  identity_principal_id = module.security.aks_prod_identity_principal_id
 
   # ACR integration
   acr_id = module.shared_services.acr_id
