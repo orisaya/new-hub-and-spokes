@@ -67,8 +67,8 @@ resource "azurerm_key_vault" "main" {
   enabled_for_disk_encryption     = true
   enabled_for_deployment          = true
   enabled_for_template_deployment = true
-  purge_protection_enabled        = true  # Cannot be disabled once enabled
-  soft_delete_retention_days      = 7     # Keep deleted items for 7 days
+  purge_protection_enabled        = true # Cannot be disabled once enabled
+  soft_delete_retention_days      = 7    # Keep deleted items for 7 days
 
   # Network settings
   public_network_access_enabled = !var.enable_private_endpoints

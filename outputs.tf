@@ -171,7 +171,7 @@ output "monitoring" {
 
 output "quick_reference" {
   description = "Quick reference guide for common tasks"
-  value = <<-EOT
+  value       = <<-EOT
 
   ╔═══════════════════════════════════════════════════════════════════════════╗
   ║                     DEPLOYMENT SUCCESSFUL! 🎉                             ║

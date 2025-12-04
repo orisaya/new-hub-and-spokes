@@ -40,8 +40,8 @@ locals {
   shared_vnet_name = "vnet-${local.name_prefix}-shared"
 
   # Subnet names
-  firewall_subnet_name          = "AzureFirewallSubnet" # Must be exactly this name
-  firewall_management_subnet    = "AzureFirewallManagementSubnet"
+  firewall_subnet_name         = "AzureFirewallSubnet" # Must be exactly this name
+  firewall_management_subnet   = "AzureFirewallManagementSubnet"
   aks_dev_subnet_name          = "snet-${local.name_prefix}-aks-dev"
   aks_prod_subnet_name         = "snet-${local.name_prefix}-aks-prod"
   shared_services_subnet_name  = "snet-${local.name_prefix}-shared"
@@ -102,18 +102,18 @@ locals {
   }
 
   dev_subnets = {
-    aks              = "10.1.0.0/20" # 4096 IPs for AKS nodes and pods
+    aks              = "10.1.0.0/20"  # 4096 IPs for AKS nodes and pods
     private_endpoint = "10.1.16.0/24" # 256 IPs for private endpoints
   }
 
   prod_subnets = {
-    aks              = "10.2.0.0/20" # 4096 IPs for AKS nodes and pods
+    aks              = "10.2.0.0/20"  # 4096 IPs for AKS nodes and pods
     private_endpoint = "10.2.16.0/24" # 256 IPs for private endpoints
   }
 
   shared_subnets = {
-    services         = "10.3.0.0/24"  # 256 IPs for shared services
-    private_endpoint = "10.3.1.0/24"  # 256 IPs for private endpoints
+    services         = "10.3.0.0/24" # 256 IPs for shared services
+    private_endpoint = "10.3.1.0/24" # 256 IPs for private endpoints
   }
 
   # -----------------------------------------------------------------------------

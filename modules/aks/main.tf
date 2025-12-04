@@ -27,8 +27,8 @@ resource "azurerm_kubernetes_cluster" "main" {
 
   # Network settings
   network_profile {
-    network_plugin    = "azure"       # Azure CNI (each pod gets an IP from the VNet)
-    network_policy    = "azure"       # Azure Network Policy
+    network_plugin    = "azure"         # Azure CNI (each pod gets an IP from the VNet)
+    network_policy    = "azure"         # Azure Network Policy
     service_cidr      = "172.16.0.0/16" # Internal service IPs
     dns_service_ip    = "172.16.0.10"   # Internal DNS IP
     load_balancer_sku = "standard"      # Standard load balancer
@@ -113,7 +113,7 @@ resource "azurerm_kubernetes_cluster" "main" {
   # Lifecycle settings
   lifecycle {
     ignore_changes = [
-      kubernetes_version, # Prevent unwanted version changes
+      kubernetes_version,             # Prevent unwanted version changes
       default_node_pool[0].node_count # Ignore if auto-scaling changes count
     ]
   }

@@ -111,7 +111,7 @@ resource "azurerm_firewall_policy_rule_collection_group" "main" {
 
     # Allow AKS required FQDNs
     rule {
-      name = "AllowAKSRequiredFQDNs"
+      name             = "AllowAKSRequiredFQDNs"
       source_addresses = ["10.1.0.0/16", "10.2.0.0/16"]
 
       protocols {
@@ -126,25 +126,25 @@ resource "azurerm_firewall_policy_rule_collection_group" "main" {
 
       # AKS required endpoints
       destination_fqdns = [
-        "*.azmk8s.io",                    # AKS management
-        "*.blob.core.windows.net",        # Storage
-        "*.cdn.mscr.io",                  # Container images
-        "mcr.microsoft.com",              # Microsoft Container Registry
-        "*.data.mcr.microsoft.com",       # MCR data
-        "management.azure.com",           # Azure management
-        "login.microsoftonline.com",      # Azure AD
-        "packages.microsoft.com",         # Microsoft packages
-        "acs-mirror.azureedge.net",       # AKS mirror
-        "dc.services.visualstudio.com",   # Telemetry
-        "*.ods.opinsights.azure.com",     # Monitoring
-        "*.oms.opinsights.azure.com",     # Monitoring
-        "*.monitoring.azure.com",         # Monitoring
+        "*.azmk8s.io",                  # AKS management
+        "*.blob.core.windows.net",      # Storage
+        "*.cdn.mscr.io",                # Container images
+        "mcr.microsoft.com",            # Microsoft Container Registry
+        "*.data.mcr.microsoft.com",     # MCR data
+        "management.azure.com",         # Azure management
+        "login.microsoftonline.com",    # Azure AD
+        "packages.microsoft.com",       # Microsoft packages
+        "acs-mirror.azureedge.net",     # AKS mirror
+        "dc.services.visualstudio.com", # Telemetry
+        "*.ods.opinsights.azure.com",   # Monitoring
+        "*.oms.opinsights.azure.com",   # Monitoring
+        "*.monitoring.azure.com",       # Monitoring
       ]
     }
 
     # Allow Ubuntu updates (for node OS)
     rule {
-      name = "AllowUbuntuUpdates"
+      name             = "AllowUbuntuUpdates"
       source_addresses = ["10.1.0.0/16", "10.2.0.0/16"]
 
       protocols {
@@ -166,7 +166,7 @@ resource "azurerm_firewall_policy_rule_collection_group" "main" {
 
     # Allow Docker Hub (for pulling public images)
     rule {
-      name = "AllowDockerHub"
+      name             = "AllowDockerHub"
       source_addresses = ["10.1.0.0/16", "10.2.0.0/16"]
 
       protocols {
@@ -183,7 +183,7 @@ resource "azurerm_firewall_policy_rule_collection_group" "main" {
 
     # Allow GitHub (for Git operations)
     rule {
-      name = "AllowGitHub"
+      name             = "AllowGitHub"
       source_addresses = ["10.1.0.0/16", "10.2.0.0/16"]
 
       protocols {
