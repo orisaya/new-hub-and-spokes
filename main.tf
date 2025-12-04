@@ -202,6 +202,9 @@ module "security" {
   mi_aks_dev_name  = local.mi_aks_dev_name
   mi_aks_prod_name = local.mi_aks_prod_name
 
+  # Role assignments
+  create_role_assignments = var.create_role_assignments
+
   # Tags
   tags = local.common_tags
 

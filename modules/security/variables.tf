@@ -41,3 +41,9 @@ variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)
 }
+
+variable "create_role_assignments" {
+  description = "Create RBAC role assignments for managed identities. Set to false if the service principal doesn't have User Access Administrator permissions"
+  type        = bool
+  default     = true
+}

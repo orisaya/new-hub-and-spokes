@@ -404,32 +404,44 @@ All resources follow Azure Cloud Adoption Framework naming:
 
 ### Common Issues
 
-**1. Terraform Init Fails**
+**1. Authorization/Permission Errors (Role Assignments)**
+
+If you see errors like:
+```
+Error: authorization.RoleAssignmentsClient#Create: Failure responding to request: StatusCode=403
+Code="AuthorizationFailed"
+```
+
+This means your service principal doesn't have permission to create role assignments. **See [PERMISSIONS.md](PERMISSIONS.md) for detailed solutions.**
+
+Quick fix: Set `create_role_assignments = false` in your `terraform.tfvars` file.
+
+**2. Terraform Init Fails**
 ```bash
 # Clear cache and re-initialize
 rm -rf .terraform .terraform.lock.hcl
 terraform init
 ```
 
-**2. Authentication Errors**
+**3. Authentication Errors**
 ```bash
 # Re-login to Azure
 az login
 az account show
 ```
 
-**3. Quota Limits**
+**4. Quota Limits**
 ```bash
 # Check your quota
 az vm list-usage --location uksouth --output table
 ```
 
-**4. AKS Private Cluster Access**
+**5. AKS Private Cluster Access**
 - Private AKS clusters can only be accessed from within the VNet
 - Use Azure Bastion or VPN to access the cluster
 - Or use `az aks command invoke` for commands
 
-**5. Firewall Rules**
+**6. Firewall Rules**
 - If pods can't reach internet, check firewall rules
 - Review logs: Azure Portal → Firewall → Logs
 

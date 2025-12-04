@@ -205,3 +205,13 @@ variable "log_retention_days" {
   type        = number
   default     = 30
 }
+
+# -----------------------------------------------------------------------------
+# SECURITY
+# -----------------------------------------------------------------------------
+
+variable "create_role_assignments" {
+  description = "Create RBAC role assignments for managed identities. Set to false if the service principal doesn't have User Access Administrator or Owner permissions"
+  type        = bool
+  default     = false
+}
