@@ -41,9 +41,12 @@ resource "azurerm_firewall_policy" "main" {
   sku                 = var.firewall_sku_tier
   tags                = var.tags
 
-  # DNS settings
-  dns {
-    proxy_enabled = true # Enable DNS proxy
+  # DNS settings (only available in Standard and Premium SKU, not Basic)
+  dynamic "dns" {
+    for_each = var.firewall_sku_tier != "Basic" ? [1] : []
+    content {
+      proxy_enabled = true # Enable DNS proxy
+    }
   }
 
   # Threat intelligence (available in Standard and Premium)
