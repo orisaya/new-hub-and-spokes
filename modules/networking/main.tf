@@ -286,8 +286,8 @@ resource "azurerm_route_table" "dev" {
   resource_group_name = var.resource_group_dev
   tags                = var.tags
 
-  # Disable BGP route propagation (we control routes manually)
-  disable_bgp_route_propagation = false
+  # Enable BGP route propagation
+  bgp_route_propagation_enabled = true
 }
 
 # Route for internet-bound traffic from Dev will be created in root main.tf
@@ -306,7 +306,7 @@ resource "azurerm_route_table" "prod" {
   resource_group_name = var.resource_group_prod
   tags                = var.tags
 
-  disable_bgp_route_propagation = false
+  bgp_route_propagation_enabled = true
 }
 
 # Route for internet-bound traffic from Prod will be created in root main.tf
@@ -325,7 +325,7 @@ resource "azurerm_route_table" "shared" {
   resource_group_name = var.resource_group_shared
   tags                = var.tags
 
-  disable_bgp_route_propagation = false
+  bgp_route_propagation_enabled = true
 }
 
 # Route for internet-bound traffic from Shared will be created in root main.tf
