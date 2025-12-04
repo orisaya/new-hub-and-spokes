@@ -39,11 +39,11 @@ resource "azurerm_container_registry" "main" {
 }
 
 # Geo-replication for ACR (Premium SKU only)
-resource "azurerm_container_registry_georeplications" "main" {
+resource "azurerm_container_registry_replication" "main" {
   count = var.enable_geo_replication && var.acr_sku == "Premium" ? 1 : 0
 
-  container_registry_name = azurerm_container_registry.main.name
-  resource_group_name     = var.resource_group_name
+  name                    = "northeurope"
+  container_registry_id   = azurerm_container_registry.main.id
   location                = "northeurope" # Replicate to another region
   zone_redundancy_enabled = true
   tags                    = var.tags
