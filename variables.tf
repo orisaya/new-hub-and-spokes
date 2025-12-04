@@ -20,7 +20,7 @@ variable "environment" {
 variable "location" {
   description = "Azure region where resources will be created (e.g., uksouth)"
   type        = string
-  default     = "uksouth"
+  default     = "westeurope"
 }
 
 variable "project_name" {
@@ -99,13 +99,13 @@ variable "aks_kubernetes_version" {
 variable "dev_aks_node_count" {
   description = "Number of nodes in dev AKS cluster"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "prod_aks_node_count" {
   description = "Number of nodes in prod AKS cluster"
   type        = number
-  default     = 3
+  default     = 2
 }
 
 variable "dev_aks_node_size" {
@@ -135,7 +135,7 @@ variable "aks_min_node_count" {
 variable "aks_max_node_count" {
   description = "Maximum number of nodes when auto-scaling"
   type        = number
-  default     = 10
+  default     = 5
 }
 
 # -----------------------------------------------------------------------------
@@ -203,5 +203,5 @@ variable "enable_log_analytics" {
 variable "log_retention_days" {
   description = "Number of days to retain logs"
   type        = number
-  default     = 30
+  default     = 5
 }

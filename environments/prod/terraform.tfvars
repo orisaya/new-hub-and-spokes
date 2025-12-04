@@ -39,20 +39,20 @@ enable_firewall_logs = true
 # -----------------------------------------------------------------------------
 # AKS SETTINGS
 # -----------------------------------------------------------------------------
-aks_kubernetes_version = "1.30" # Version 1.30 (1.28 is LTS-only and requires Premium tier)
+aks_kubernetes_version = "1.33" # Version 1.30 (1.28 is LTS-only and requires Premium tier)
 
 # Dev cluster settings (not used in prod deployment, but required)
-dev_aks_node_count = 2
+dev_aks_node_count = 1
 dev_aks_node_size  = "Standard_D2s_v3"
 
 # Prod cluster settings (larger for production workloads)
-prod_aks_node_count = 3                 # 3 nodes minimum for HA
+prod_aks_node_count = 2                 # 3 nodes minimum for HA
 prod_aks_node_size  = "Standard_D4s_v3" # Larger VMs (4 vCPU, 16 GB RAM)
 
 # Auto-scaling settings
 enable_aks_auto_scaling = true
-aks_min_node_count      = 3  # Always keep 3 nodes running
-aks_max_node_count      = 10 # Scale up to 10 nodes under load
+aks_min_node_count      = 2  # Always keep 3 nodes running
+aks_max_node_count      = 5 # Scale up to 10 nodes under load
 
 # -----------------------------------------------------------------------------
 # SHARED SERVICES SETTINGS

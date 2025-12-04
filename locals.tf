@@ -18,7 +18,7 @@ locals {
     "eastus"     = "eus"
     "westeurope" = "weu"
   }
-  region_code = lookup(local.region_short, var.location, "uks")
+  region_code = lookup(local.region_short, var.location, "weu")
 
   # Common name prefix (used in all resource names)
   name_prefix = "${var.project_name}-${var.environment}-${local.region_code}"
