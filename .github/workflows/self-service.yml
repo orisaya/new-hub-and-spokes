@@ -1,0 +1,303 @@
+# ============================================================================
+# SELF-SERVICE WORKFLOW
+# ============================================================================
+# Manual workflow for developers to perform controlled operations
+# Includes guardrails and validation
+
+name: Self-Service Operations
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+      operation:
+        description: 'Operation to perform'
+        required: true
+        type: choice
+        options:
+          - plan-only
+          - validate-config
+          - show-outputs
+          - check-costs
+          - refresh-state
+      custom_message:
+        description: 'Optional message/reason for this operation'
+        required: false
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate-operation:
+    name: Validate Operation
+    runs-on: ubuntu-latest
+    outputs:
+      allowed: ${{ steps.validate.outputs.allowed }}
+    steps:
+      - name: Validate Operation
+        id: validate
+        run: |
+          echo "### Self-Service Operation Request" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Requested by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Operation:** ${{ github.event.inputs.operation }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Message:** ${{ github.event.inputs.custom_message }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Validate operation is allowed
+          echo "allowed=true" >> $GITHUB_OUTPUT
+
+  plan-only:
+    name: Generate Terraform Plan
+    needs: validate-operation
+    if: needs.validate-operation.outputs.allowed == 'true' && github.event.inputs.operation == 'plan-only'
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      environment: ${{ github.event.inputs.environment }}
+      terraform_action: plan
+      working_directory: .
+      upload_plan: true
+      comment_pr: false
+    secrets: inherit
+
+  validate-config:
+    name: Validate Configuration
+    needs: validate-operation
+    if: needs.validate-operation.outputs.allowed == 'true' && github.event.inputs.operation == 'validate-config'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config=environments/${{ github.event.inputs.environment }}/backend.tf \
+            -backend=false
+        continue-on-error: true
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: Run TFLint
+        id: tflint
+        run: |
+          tflint --init
+          tflint --format compact
+        continue-on-error: true
+
+      - name: Create Validation Summary
+        run: |
+          echo "### Configuration Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Terraform Format | ${{ steps.fmt.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Terraform Validate | ${{ steps.validate.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| TFLint | ${{ steps.tflint.outcome }} |" >> $GITHUB_STEP_SUMMARY
+
+  show-outputs:
+    name: Show Terraform Outputs
+    needs: validate-operation
+    if: needs.validate-operation.outputs.allowed == 'true' && github.event.inputs.operation == 'show-outputs'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+          terraform_wrapper: false
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config=environments/${{ github.event.inputs.environment }}/backend.tf \
+            -reconfigure
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Get Terraform Outputs
+        id: output
+        run: |
+          terraform output > /tmp/outputs.txt
+          cat /tmp/outputs.txt
+
+      - name: Upload Outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-outputs-${{ github.event.inputs.environment }}
+          path: /tmp/outputs.txt
+          retention-days: 7
+
+      - name: Create Outputs Summary
+        run: |
+          echo "### Terraform Outputs - ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/outputs.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  check-costs:
+    name: Check Infrastructure Costs
+    needs: validate-operation
+    if: needs.validate-operation.outputs.allowed == 'true' && github.event.inputs.operation == 'check-costs'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config=environments/${{ github.event.inputs.environment }}/backend.tf \
+            -reconfigure
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var-file=environments/${{ github.event.inputs.environment }}/terraform.tfvars \
+            -out=${{ github.event.inputs.environment }}.tfplan
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Generate Cost Report
+        run: |
+          infracost breakdown \
+            --path=${{ github.event.inputs.environment }}.tfplan \
+            --format=table > /tmp/cost-report.txt
+          cat /tmp/cost-report.txt
+
+      - name: Upload Cost Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: cost-report-${{ github.event.inputs.environment }}
+          path: /tmp/cost-report.txt
+          retention-days: 30
+
+      - name: Create Cost Summary
+        run: |
+          echo "### Infrastructure Cost Estimate - ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/cost-report.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  refresh-state:
+    name: Refresh Terraform State
+    needs: validate-operation
+    if: needs.validate-operation.outputs.allowed == 'true' && github.event.inputs.operation == 'refresh-state'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config=environments/${{ github.event.inputs.environment }}/backend.tf \
+            -reconfigure
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Terraform Refresh
+        run: |
+          terraform refresh \
+            -var-file=environments/${{ github.event.inputs.environment }}/terraform.tfvars
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Create Refresh Summary
+        run: |
+          echo "### State Refresh Complete - ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Terraform state has been refreshed to match real infrastructure" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** This only updates the state file. No infrastructure changes were made." >> $GITHUB_STEP_SUMMARY

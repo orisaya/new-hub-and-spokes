@@ -11,6 +11,7 @@ This project creates a production-ready Azure hub-and-spoke network architecture
 - [What Gets Created](#what-gets-created)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
+- [CI/CD Pipeline](#cicd-pipeline) 🚀
 - [Deployment Guide](#deployment-guide)
 - [Project Structure](#project-structure)
 - [Configuration](#configuration)
@@ -219,6 +220,117 @@ kubectl get nodes
 # Get credentials for prod cluster
 az aks get-credentials --resource-group rg-hubspoke-prod-uks-prod --name aks-hubspoke-prod-uks-prod
 ```
+
+## 🚀 CI/CD Pipeline
+
+This project includes a professional GitHub Actions CI/CD pipeline for automated deployments!
+
+### Features
+
+✅ **Automated Deployments** - Push to develop/main triggers deployment
+✅ **Manual Approval Gates** - Production requires approval before deployment
+✅ **Cost Estimation** - Infracost integration shows cost before changes
+✅ **Drift Detection** - Weekly checks for manual Azure changes
+✅ **Self-Service** - Developers can safely run operations
+✅ **Azure OIDC** - Secure, passwordless authentication (no secrets!)
+
+### Quick Start with CI/CD
+
+**1. Setup Azure OIDC Authentication**
+
+Follow the guide: [.github/AZURE-OIDC-SETUP.md](.github/AZURE-OIDC-SETUP.md)
+
+```bash
+# Quick setup script
+az login
+./scripts/setup-github-oidc.sh  # Coming soon
+```
+
+**2. Configure GitHub Secrets**
+
+Add these secrets in **Settings** → **Secrets and variables** → **Actions**:
+- `AZURE_CLIENT_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+- `STATE_STORAGE_ACCOUNT`
+- `INFRACOST_API_KEY`
+
+**3. Create GitHub Environments**
+
+- `dev` - No protection (auto-deploy)
+- `prod` - Require reviewers
+- `prod-approval` - Deployment approval gate
+
+**4. Deploy via CI/CD**
+
+```bash
+# Deploy to dev (automatic)
+git checkout -b feature/my-change
+# Make changes
+git commit -am "My change"
+git push origin feature/my-change
+# Create PR → develop
+# ✅ Merging PR automatically deploys to dev!
+
+# Deploy to prod (with approval)
+# Create PR: develop → main
+# Merge PR
+# ⏸️  Approve deployment in GitHub
+# ✅ Deployed to production!
+```
+
+### Available Workflows
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| **PR Plan** | Pull request | Validate changes, show plan |
+| **Deploy Dev** | Merge to develop | Auto-deploy to dev |
+| **Deploy Prod** | Merge to main | Deploy to prod (requires approval) |
+| **Drift Detection** | Weekly / Manual | Detect configuration drift |
+| **Self-Service** | Manual | Developer operations (plan, costs, outputs) |
+
+### Documentation
+
+- 📖 **[Pipeline Usage Guide](.github/PIPELINE-USAGE.md)** - How to use workflows
+- 🔐 **[Azure OIDC Setup](.github/AZURE-OIDC-SETUP.md)** - Authentication setup
+- 📚 **[Pipeline README](.github/README.md)** - Technical details
+
+### Example: Deploy a Change
+
+```bash
+# 1. Create feature branch
+git checkout -b feature/add-bastion
+
+# 2. Make your changes
+vim main.tf
+
+# 3. Create PR to develop
+git commit -am "Add Azure Bastion"
+git push origin feature/add-bastion
+# Create PR on GitHub
+
+# 4. Review automated plan in PR comments
+# - Terraform plan output
+# - Cost estimate from Infracost
+# - Validation results
+
+# 5. Merge PR → automatic deployment to dev!
+
+# 6. Test in dev, then promote to prod
+# Create PR: develop → main
+# Get approval → merge → approve deployment → deployed!
+```
+
+### Benefits
+
+🎯 **Faster Deployments** - Automated pipeline reduces manual work
+🔒 **More Secure** - OIDC authentication, no secrets in GitHub
+💰 **Cost Aware** - See cost impact before applying changes
+🚨 **Early Detection** - Catch errors before production
+📊 **Full Visibility** - All changes tracked and documented
+✅ **Quality Checks** - Automated validation and linting
+
+---
 
 ## 📁 Project Structure
 

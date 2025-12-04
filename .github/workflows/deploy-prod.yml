@@ -1,0 +1,272 @@
+# ============================================================================
+# PRODUCTION DEPLOYMENT WORKFLOW
+# ============================================================================
+# Triggered on merge to main branch or manual workflow_dispatch
+# Requires manual approval before applying changes to production
+
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.tf'
+      - 'environments/prod/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+    inputs:
+      terraform_action:
+        description: 'Terraform action to perform'
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+        default: 'plan'
+      skip_plan:
+        description: 'Skip plan and go directly to apply (NOT RECOMMENDED)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  # Plan stage
+  terraform-plan:
+    name: Plan Prod Infrastructure
+    if: |
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' && !github.event.inputs.skip_plan)
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      environment: prod
+      terraform_action: plan
+      working_directory: .
+      upload_plan: true
+      comment_pr: false
+    secrets: inherit
+
+  # Manual approval gate for production
+  approval-gate:
+    name: 🚨 Manual Approval Required
+    needs: terraform-plan
+    runs-on: ubuntu-latest
+    if: |
+      always() &&
+      needs.terraform-plan.result == 'success' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.terraform_action == 'apply'))
+    environment:
+      name: prod-approval
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Request Approval
+        run: |
+          echo "### ⚠️  PRODUCTION DEPLOYMENT APPROVAL REQUIRED" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This workflow is waiting for approval before deploying to production." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment Details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: **production**" >> $GITHUB_STEP_SUMMARY
+          echo "- Triggered by: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Before approving, please:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Review the Terraform plan output" >> $GITHUB_STEP_SUMMARY
+          echo "2. ✅ Verify cost estimates from Infracost" >> $GITHUB_STEP_SUMMARY
+          echo "3. ✅ Ensure all tests have passed" >> $GITHUB_STEP_SUMMARY
+          echo "4. ✅ Confirm this is the intended change" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Approval granted by:** This will be logged after approval" >> $GITHUB_STEP_SUMMARY
+
+  # Apply stage (requires approval)
+  terraform-apply:
+    name: Deploy Prod Infrastructure
+    needs: [terraform-plan, approval-gate]
+    if: |
+      always() &&
+      needs.approval-gate.result == 'success' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.terraform_action == 'apply'))
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      environment: prod
+      terraform_action: apply
+      working_directory: .
+      upload_plan: false
+      comment_pr: false
+    secrets: inherit
+
+  # Destroy stage (manual workflow_dispatch only, requires approval)
+  destroy-approval:
+    name: 🚨 Destroy Approval Required
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.terraform_action == 'destroy'
+    runs-on: ubuntu-latest
+    environment:
+      name: prod-destroy-approval
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Request Destroy Approval
+        run: |
+          echo "### ⚠️  PRODUCTION DESTROY APPROVAL REQUIRED" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **WARNING: This will destroy ALL production resources!**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This action is **IRREVERSIBLE** and will delete:" >> $GITHUB_STEP_SUMMARY
+          echo "- Virtual Networks" >> $GITHUB_STEP_SUMMARY
+          echo "- Azure Firewall" >> $GITHUB_STEP_SUMMARY
+          echo "- AKS Clusters" >> $GITHUB_STEP_SUMMARY
+          echo "- Container Registry" >> $GITHUB_STEP_SUMMARY
+          echo "- Key Vault (soft delete enabled)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Only approve if you are absolutely certain!**" >> $GITHUB_STEP_SUMMARY
+
+  terraform-destroy:
+    name: Destroy Prod Infrastructure
+    needs: destroy-approval
+    if: needs.destroy-approval.result == 'success'
+    uses: ./.github/workflows/terraform-reusable.yml
+    with:
+      environment: prod
+      terraform_action: destroy
+      working_directory: .
+      upload_plan: false
+      comment_pr: false
+    secrets: inherit
+
+  # Post-deployment notification
+  notify-deployment:
+    name: Notify Deployment Status
+    needs: [terraform-apply]
+    if: always() && needs.terraform-apply.result != 'skipped'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Deployment Summary
+        run: |
+          echo "### 🚀 Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** production" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ needs.terraform-apply.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed at:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.terraform-apply.result }}" == "success" ]]; then
+            echo "✅ **Deployment completed successfully!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Verify resources in Azure Portal" >> $GITHUB_STEP_SUMMARY
+            echo "2. Connect to AKS cluster:" >> $GITHUB_STEP_SUMMARY
+            echo '   ```bash' >> $GITHUB_STEP_SUMMARY
+            echo '   az aks get-credentials --resource-group rg-hubspoke-prod-uks-prod --name aks-hubspoke-prod-uks-prod' >> $GITHUB_STEP_SUMMARY
+            echo '   kubectl get nodes' >> $GITHUB_STEP_SUMMARY
+            echo '   ```' >> $GITHUB_STEP_SUMMARY
+            echo "3. Monitor application health" >> $GITHUB_STEP_SUMMARY
+            echo "4. Review cost estimates in Infracost report" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Deployment failed!**" >> $GITHUB_STEP_SUMMARY
+            echo "Check the logs above for details." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Rollback Procedure:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Review workflow logs for errors" >> $GITHUB_STEP_SUMMARY
+            echo "2. Check Terraform state integrity" >> $GITHUB_STEP_SUMMARY
+            echo "3. Consider restoring from backup if needed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Create Issue on Failure
+        if: needs.terraform-apply.result == 'failure'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = '🚨 Production Deployment Failed';
+            const body = `### Production Deployment Failure
+
+            **⚠️ CRITICAL: Production deployment has failed!**
+
+            **Workflow:** ${{ github.workflow }}
+            **Run:** ${{ github.run_id }}
+            **Triggered by:** @${{ github.actor }}
+            **Commit:** ${{ github.sha }}
+            **Branch:** ${{ github.ref_name }}
+
+            **Immediate Action Required:**
+            1. 🔍 Review the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            2. 🔒 Check Terraform state for consistency
+            3. 🔧 Verify Azure resources manually
+            4. 📊 Assess impact on production services
+            5. 🔄 Consider rollback if necessary
+
+            **State Backup:**
+            State file was automatically backed up before deployment.
+            Check Azure Storage account: tfstate-backups container
+
+            **Workflow URL:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            **Assigned to:** Platform Team
+            **Priority:** P0 - Critical
+            `;
+
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['deployment-failure', 'prod', 'terraform', 'P0-critical'],
+              assignees: [] // Add your team members here
+            });
+
+      - name: Create Success Notification
+        if: needs.terraform-apply.result == 'success'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = '✅ Production Deployment Successful';
+            const body = `### Production Deployment Success
+
+            **✅ Production has been successfully deployed!**
+
+            **Workflow:** ${{ github.workflow }}
+            **Run:** ${{ github.run_id }}
+            **Deployed by:** @${{ github.actor }}
+            **Commit:** ${{ github.sha }}
+            **Branch:** ${{ github.ref_name }}
+            **Deployed at:** ${new Date().toUTCString()}
+
+            **Deployment Summary:**
+            - Environment: Production
+            - Status: Success
+            - Infrastructure: Azure Hub-and-Spoke with AKS
+
+            **Verification Steps:**
+            ✅ Terraform apply completed successfully
+            ✅ State file updated
+            ✅ Backup created
+
+            **Next Steps:**
+            1. Monitor application metrics
+            2. Verify user-facing services
+            3. Check cost dashboard
+            4. Update runbook if needed
+
+            **Workflow URL:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            `;
+
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['deployment-success', 'prod', 'terraform']
+            });
