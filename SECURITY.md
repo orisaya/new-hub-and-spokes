@@ -1,5 +1,6 @@
 # Security Best Practices
 
+
 This document outlines security best practices and compliance recommendations for the Azure hub-and-spoke architecture.
 
 ## 🔒 Built-in Security Features
