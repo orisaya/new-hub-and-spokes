@@ -35,18 +35,17 @@ resource "azurerm_container_registry" "main" {
     }
   }
 
+  # Geo-replication (only for Premium SKU)
+  dynamic "georeplications" {
+    for_each = var.enable_geo_replication && var.acr_sku == "Premium" ? [1] : []
+    content {
+      location                = "northeurope" # Replicate to North Europe
+      zone_redundancy_enabled = true
+      tags                    = var.tags
+    }
+  }
+
   tags = var.tags
-}
-
-# Geo-replication for ACR (Premium SKU only)
-resource "azurerm_container_registry_replication" "main" {
-  count = var.enable_geo_replication && var.acr_sku == "Premium" ? 1 : 0
-
-  name                    = "northeurope"
-  container_registry_id   = azurerm_container_registry.main.id
-  location                = "northeurope" # Replicate to another region
-  zone_redundancy_enabled = true
-  tags                    = var.tags
 }
 
 # -----------------------------------------------------------------------------
