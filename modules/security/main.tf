@@ -62,6 +62,21 @@ resource "azurerm_role_assignment" "aks_prod_shared_reader" {
   principal_id         = azurerm_user_assigned_identity.aks_prod.principal_id
 }
 
+# Managed Identity Operator role for dev AKS on its own identity
+# This allows AKS control plane to assign the kubelet identity
+resource "azurerm_role_assignment" "aks_dev_mi_operator" {
+  scope                = azurerm_user_assigned_identity.aks_dev.id
+  role_definition_name = "Managed Identity Operator"
+  principal_id         = azurerm_user_assigned_identity.aks_dev.principal_id
+}
+
+# Managed Identity Operator role for prod AKS on its own identity
+resource "azurerm_role_assignment" "aks_prod_mi_operator" {
+  scope                = azurerm_user_assigned_identity.aks_prod.id
+  role_definition_name = "Managed Identity Operator"
+  principal_id         = azurerm_user_assigned_identity.aks_prod.principal_id
+}
+
 # -----------------------------------------------------------------------------
 # DATA SOURCES
 # -----------------------------------------------------------------------------
