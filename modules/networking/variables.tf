@@ -90,11 +90,6 @@ variable "shared_subnets" {
   type        = map(string)
 }
 
-variable "firewall_private_ip" {
-  description = "Azure Firewall private IP address"
-  type        = string
-}
-
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)

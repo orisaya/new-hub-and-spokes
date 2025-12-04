@@ -87,9 +87,6 @@ module "networking" {
   prod_subnets   = local.prod_subnets
   shared_subnets = local.shared_subnets
 
-  # Firewall IP (will be set after firewall is created)
-  firewall_private_ip = module.firewall.firewall_private_ip
-
   # Tags
   tags = local.common_tags
 
@@ -133,6 +130,57 @@ module "firewall" {
 
   # Dependencies
   depends_on = [module.networking]
+}
+
+# -----------------------------------------------------------------------------
+# ROUTES TO FIREWALL
+# -----------------------------------------------------------------------------
+# These routes direct internet-bound traffic through the Azure Firewall
+# Created here to avoid circular dependency between networking and firewall modules
+
+# Route for internet-bound traffic from Dev (goes through firewall)
+resource "azurerm_route" "dev_to_internet" {
+  name                   = "route-dev-to-internet"
+  resource_group_name    = azurerm_resource_group.dev.name
+  route_table_name       = module.networking.dev_route_table_name
+  address_prefix         = "0.0.0.0/0"
+  next_hop_type          = "VirtualAppliance"
+  next_hop_in_ip_address = module.firewall.firewall_private_ip
+
+  depends_on = [
+    module.networking,
+    module.firewall
+  ]
+}
+
+# Route for internet-bound traffic from Prod (goes through firewall)
+resource "azurerm_route" "prod_to_internet" {
+  name                   = "route-prod-to-internet"
+  resource_group_name    = azurerm_resource_group.prod.name
+  route_table_name       = module.networking.prod_route_table_name
+  address_prefix         = "0.0.0.0/0"
+  next_hop_type          = "VirtualAppliance"
+  next_hop_in_ip_address = module.firewall.firewall_private_ip
+
+  depends_on = [
+    module.networking,
+    module.firewall
+  ]
+}
+
+# Route for internet-bound traffic from Shared (goes through firewall)
+resource "azurerm_route" "shared_to_internet" {
+  name                   = "route-shared-to-internet"
+  resource_group_name    = azurerm_resource_group.shared.name
+  route_table_name       = module.networking.shared_route_table_name
+  address_prefix         = "0.0.0.0/0"
+  next_hop_type          = "VirtualAppliance"
+  next_hop_in_ip_address = module.firewall.firewall_private_ip
+
+  depends_on = [
+    module.networking,
+    module.firewall
+  ]
 }
 
 # -----------------------------------------------------------------------------
