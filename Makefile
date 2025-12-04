@@ -54,24 +54,21 @@ help:
 ## init: Initialize Terraform (use init-dev or init-prod for environment-specific)
 init:
 	@echo "$(BLUE)Initializing Terraform...$(NC)"
-	@if [ ! -f backend.tf ]; then \
-		echo "$(YELLOW)Warning: backend.tf not found!$(NC)"; \
-		echo "$(YELLOW)Run 'make init-dev' or 'make init-prod' to set up backend$(NC)"; \
-	fi
+	@echo "$(YELLOW)Note: Run 'make init-dev' or 'make init-prod' to set up environment-specific backend$(NC)"
 	terraform init
 
 ## init-dev: Initialize with dev backend
 init-dev:
 	@echo "$(BLUE)Setting up dev backend...$(NC)"
-	@echo "$(YELLOW)Remember to update storage_account_name in environments/dev/backend.tf!$(NC)"
-	terraform init -backend-config=environments/dev/backend.tf -reconfigure
+	@echo "$(YELLOW)Remember to update storage_account_name in environments/dev/backend.tfbackend!$(NC)"
+	terraform init -backend-config=environments/dev/backend.tfbackend -reconfigure
 	@echo "$(GREEN)✓ Initialized with dev backend$(NC)"
 
 ## init-prod: Initialize with prod backend
 init-prod:
 	@echo "$(BLUE)Setting up prod backend...$(NC)"
-	@echo "$(YELLOW)Remember to update storage_account_name in environments/prod/backend.tf!$(NC)"
-	terraform init -backend-config=environments/prod/backend.tf -reconfigure
+	@echo "$(YELLOW)Remember to update storage_account_name in environments/prod/backend.tfbackend!$(NC)"
+	terraform init -backend-config=environments/prod/backend.tfbackend -reconfigure
 	@echo "$(GREEN)✓ Initialized with prod backend$(NC)"
 
 ## validate: Validate Terraform configuration

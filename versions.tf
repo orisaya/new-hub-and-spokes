@@ -8,9 +8,15 @@ terraform {
   # We need Terraform version 1.6 or higher
   required_version = ">= 1.6.0"
 
-  # Backend configuration is environment-specific
-  # Located in environments/dev/backend.tf and environments/prod/backend.tf
-  # Use: terraform init -backend-config=environments/dev/backend.tf
+  # Backend configuration for Azure Storage
+  # Environment-specific values are provided via:
+  # - environments/dev/backend.tfbackend
+  # - environments/prod/backend.tfbackend
+  # Use: terraform init -backend-config=environments/dev/backend.tfbackend
+  backend "azurerm" {
+    # Partial configuration - values provided via backend.tfbackend files
+    use_oidc = true
+  }
 
   # Required providers (like apps we need installed)
   required_providers {

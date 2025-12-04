@@ -1,32 +1,31 @@
 # ============================================================================
 # BACKEND CONFIGURATION - EXAMPLE
 # ============================================================================
-# This is an example backend configuration file
+# This project uses partial backend configuration with .tfbackend files
 #
-# To use:
-# 1. Copy the appropriate environment file to backend.tf:
-#    - For dev:  cp environments/backend-dev.tf backend.tf
-#    - For prod: cp environments/backend-prod.tf backend.tf
-#
-# 2. Update the storage_account_name with your actual storage account
-#
-# 3. Run terraform init
+# Backend configuration is split into two parts:
+# 1. Main backend block in versions.tf (already configured)
+# 2. Environment-specific .tfbackend files (see below)
 #
 # ============================================================================
 
-terraform {
-  backend "azurerm" {
-    resource_group_name  = "rg-terraform-state"
-    storage_account_name = "tfstateXXXXXXXX"  # Replace with your storage account
-    container_name       = "tfstate"
-    key                  = "hub-spoke-ENV.tfstate"  # Replace ENV with dev or prod
-  }
-}
+# Example .tfbackend file format (environments/dev/backend.tfbackend):
+#
+# resource_group_name  = "rg-terraform-state"
+# storage_account_name = "tfstateXXXXXXXX"  # Replace with your storage account
+# container_name       = "tfstate"
+# key                  = "hub-spoke-dev.tfstate"
+
+# To use:
+# 1. Update storage_account_name in environments/dev/backend.tfbackend
+# 2. Update storage_account_name in environments/prod/backend.tfbackend
+# 3. Run: terraform init -backend-config=environments/dev/backend.tfbackend
+#    Or use: make init-dev
 
 # ============================================================================
 # ALTERNATIVE: Local Backend (for testing only)
 # ============================================================================
-# If you want to use local state instead of Azure Storage:
+# If you want to use local state instead of Azure Storage, update versions.tf:
 #
 # terraform {
 #   backend "local" {
