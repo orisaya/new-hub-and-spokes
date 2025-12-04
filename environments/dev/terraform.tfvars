@@ -38,7 +38,7 @@ enable_firewall_logs = true
 # -----------------------------------------------------------------------------
 # AKS SETTINGS
 # -----------------------------------------------------------------------------
-aks_kubernetes_version = "1.28" # Update to latest stable version
+aks_kubernetes_version = "1.30" # Version 1.30 (1.28 is LTS-only and requires Premium tier)
 
 # Dev cluster settings (smaller for cost savings)
 dev_aks_node_count = 2                 # 2 nodes for dev

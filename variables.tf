@@ -93,7 +93,7 @@ variable "enable_firewall_logs" {
 variable "aks_kubernetes_version" {
   description = "Kubernetes version for AKS clusters"
   type        = string
-  default     = "1.28" # Update this to latest stable version
+  default     = "1.30" # Using 1.30 as it's widely supported (1.28 is LTS-only)
 }
 
 variable "dev_aks_node_count" {
