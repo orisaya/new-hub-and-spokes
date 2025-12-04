@@ -36,7 +36,7 @@ jobs:
   # Plan stage
   terraform-plan:
     name: Plan Dev Infrastructure
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.terraform_action != 'apply')
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.terraform_action != 'destroy')
     uses: ./.github/workflows/terraform-reusable.yml
     with:
       environment: dev
@@ -80,7 +80,7 @@ jobs:
   # Post-deployment notification
   notify-deployment:
     name: Notify Deployment Status
-    needs: [terraform-apply]
+    needs: [terraform-plan, terraform-apply, terraform-destroy]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -89,29 +89,54 @@ jobs:
           echo "### 🚀 Development Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** dev" >> $GITHUB_STEP_SUMMARY
-          echo "**Status:** ${{ needs.terraform-apply.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Action:** ${{ github.event.inputs.terraform_action || 'push' }}" >> $GITHUB_STEP_SUMMARY
           echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [[ "${{ needs.terraform-apply.result }}" == "success" ]]; then
-            echo "✅ **Deployment completed successfully!**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
-            echo "1. Verify resources in Azure Portal" >> $GITHUB_STEP_SUMMARY
-            echo "2. Connect to AKS cluster:" >> $GITHUB_STEP_SUMMARY
-            echo '   ```bash' >> $GITHUB_STEP_SUMMARY
-            echo '   az aks get-credentials --resource-group rg-hubspoke-dev-uks-dev --name aks-hubspoke-dev-uks-dev' >> $GITHUB_STEP_SUMMARY
-            echo '   kubectl get nodes' >> $GITHUB_STEP_SUMMARY
-            echo '   ```' >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ **Deployment failed!**" >> $GITHUB_STEP_SUMMARY
-            echo "Check the logs above for details." >> $GITHUB_STEP_SUMMARY
+          # Determine which job ran and its status
+          if [[ "${{ needs.terraform-destroy.result }}" != "skipped" ]]; then
+            echo "**Status:** ${{ needs.terraform-destroy.result }}" >> $GITHUB_STEP_SUMMARY
+            if [[ "${{ needs.terraform-destroy.result }}" == "success" ]]; then
+              echo "✅ **Infrastructure destroyed successfully!**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Destroy operation failed!**" >> $GITHUB_STEP_SUMMARY
+              echo "Check the logs above for details." >> $GITHUB_STEP_SUMMARY
+            fi
+          elif [[ "${{ needs.terraform-apply.result }}" != "skipped" ]]; then
+            echo "**Status:** ${{ needs.terraform-apply.result }}" >> $GITHUB_STEP_SUMMARY
+            if [[ "${{ needs.terraform-apply.result }}" == "success" ]]; then
+              echo "✅ **Deployment completed successfully!**" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
+              echo "1. Verify resources in Azure Portal" >> $GITHUB_STEP_SUMMARY
+              echo "2. Connect to AKS cluster:" >> $GITHUB_STEP_SUMMARY
+              echo '   ```bash' >> $GITHUB_STEP_SUMMARY
+              echo '   az aks get-credentials --resource-group rg-hubspoke-dev-uks-dev --name aks-hubspoke-dev-uks-dev' >> $GITHUB_STEP_SUMMARY
+              echo '   kubectl get nodes' >> $GITHUB_STEP_SUMMARY
+              echo '   ```' >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Deployment failed!**" >> $GITHUB_STEP_SUMMARY
+              echo "Check the logs above for details." >> $GITHUB_STEP_SUMMARY
+            fi
+          elif [[ "${{ needs.terraform-plan.result }}" != "skipped" ]]; then
+            echo "**Status:** ${{ needs.terraform-plan.result }}" >> $GITHUB_STEP_SUMMARY
+            if [[ "${{ needs.terraform-plan.result }}" == "success" ]]; then
+              echo "✅ **Plan completed successfully!**" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "Review the plan output above and run 'apply' when ready." >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Plan failed!**" >> $GITHUB_STEP_SUMMARY
+              echo "Check the logs above for details." >> $GITHUB_STEP_SUMMARY
+            fi
           fi
 
       - name: Create Issue on Failure
-        if: needs.terraform-apply.result == 'failure'
+        if: |
+          needs.terraform-plan.result == 'failure' ||
+          needs.terraform-apply.result == 'failure' ||
+          needs.terraform-destroy.result == 'failure'
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
