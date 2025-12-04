@@ -58,7 +58,7 @@ jobs:
       - name: Terraform Init
         run: |
           terraform init \
-            -backend-config=environments/dev/backend.tf \
+            -backend-config=environments/dev/backend.tfbackend \
             -reconfigure
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -137,7 +137,7 @@ jobs:
       - name: Terraform Init
         run: |
           terraform init \
-            -backend-config=environments/prod/backend.tf \
+            -backend-config=environments/prod/backend.tfbackend \
             -reconfigure
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}

@@ -1,0 +1,10 @@
+# ============================================================================
+# BACKEND CONFIGURATION - PRODUCTION ENVIRONMENT
+# ============================================================================
+# Partial backend configuration for PROD environment
+# This file is used with: terraform init -backend-config=environments/prod/backend.tfbackend
+
+resource_group_name  = "rg-terraform-state"
+storage_account_name = "tfstatec266c3b2"
+container_name       = "tfstate"
+key                  = "hub-spoke-prod.tfstate"

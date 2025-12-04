@@ -56,9 +56,9 @@ fi
 
 # Initialize Terraform with environment-specific backend
 echo -e "${BLUE}Step 3: Initializing Terraform with ${ENVIRONMENT} backend...${NC}"
-echo -e "${YELLOW}Using backend config: environments/${ENVIRONMENT}/backend.tf${NC}"
-echo -e "${YELLOW}Make sure storage_account_name is updated in environments/${ENVIRONMENT}/backend.tf!${NC}"
-terraform init -backend-config="environments/${ENVIRONMENT}/backend.tf" -reconfigure
+echo -e "${YELLOW}Using backend config: environments/${ENVIRONMENT}/backend.tfbackend${NC}"
+echo -e "${YELLOW}Make sure storage_account_name is updated in environments/${ENVIRONMENT}/backend.tfbackend!${NC}"
+terraform init -backend-config="environments/${ENVIRONMENT}/backend.tfbackend" -reconfigure
 echo -e "${GREEN}✓ Terraform initialized${NC}"
 echo ""
 
