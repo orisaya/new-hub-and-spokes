@@ -8,7 +8,7 @@
 # GENERAL SETTINGS
 # -----------------------------------------------------------------------------
 environment  = "dev"
-location     = "uksouth"
+location     = "westeurope"
 project_name = "hubspoke"
 
 # Tags for all resources in dev

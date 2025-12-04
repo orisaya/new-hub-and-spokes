@@ -21,7 +21,7 @@ echo ""
 
 # Configuration
 RESOURCE_GROUP_NAME="${TF_STATE_RG:-rg-terraform-state}"
-LOCATION="${TF_STATE_LOCATION:-uksouth}"
+LOCATION="${TF_STATE_LOCATION:-westeurope}"
 STORAGE_ACCOUNT_NAME="${TF_STATE_SA:-tfstate$(openssl rand -hex 4)}"
 CONTAINER_NAME="${TF_STATE_CONTAINER:-tfstate}"
 
@@ -94,8 +94,7 @@ echo -e "${BLUE}Enabling blob versioning...${NC}"
 az storage account blob-service-properties update \
     --account-name $STORAGE_ACCOUNT_NAME \
     --enable-versioning true \
-    --enable-change-feed true \
-    --auth-mode login
+    --enable-change-feed true 
 echo -e "${GREEN}✓ Versioning enabled${NC}"
 
 # Create container
@@ -103,7 +102,6 @@ echo -e "${BLUE}Creating blob container...${NC}"
 az storage container create \
     --name $CONTAINER_NAME \
     --account-name $STORAGE_ACCOUNT_NAME \
-    --auth-mode login \
     --public-access off
 echo -e "${GREEN}✓ Container created${NC}"
 
