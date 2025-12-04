@@ -35,6 +35,7 @@ resource "azurerm_user_assigned_identity" "aks_prod" {
 # Network Contributor role for dev AKS on its resource group
 # This allows AKS to manage network resources
 resource "azurerm_role_assignment" "aks_dev_network" {
+  count                = var.create_role_assignments ? 1 : 0
   scope                = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.resource_group_dev}"
   role_definition_name = "Network Contributor"
   principal_id         = azurerm_user_assigned_identity.aks_dev.principal_id
@@ -42,6 +43,7 @@ resource "azurerm_role_assignment" "aks_dev_network" {
 
 # Network Contributor role for prod AKS on its resource group
 resource "azurerm_role_assignment" "aks_prod_network" {
+  count                = var.create_role_assignments ? 1 : 0
   scope                = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.resource_group_prod}"
   role_definition_name = "Network Contributor"
   principal_id         = azurerm_user_assigned_identity.aks_prod.principal_id
@@ -50,6 +52,7 @@ resource "azurerm_role_assignment" "aks_prod_network" {
 # Reader role on shared services resource group for dev AKS
 # This allows dev AKS to see (but not modify) shared services
 resource "azurerm_role_assignment" "aks_dev_shared_reader" {
+  count                = var.create_role_assignments ? 1 : 0
   scope                = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.resource_group_shared}"
   role_definition_name = "Reader"
   principal_id         = azurerm_user_assigned_identity.aks_dev.principal_id
@@ -57,6 +60,7 @@ resource "azurerm_role_assignment" "aks_dev_shared_reader" {
 
 # Reader role on shared services resource group for prod AKS
 resource "azurerm_role_assignment" "aks_prod_shared_reader" {
+  count                = var.create_role_assignments ? 1 : 0
   scope                = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.resource_group_shared}"
   role_definition_name = "Reader"
   principal_id         = azurerm_user_assigned_identity.aks_prod.principal_id
@@ -65,6 +69,7 @@ resource "azurerm_role_assignment" "aks_prod_shared_reader" {
 # Managed Identity Operator role for dev AKS on its own identity
 # This allows AKS control plane to assign the kubelet identity
 resource "azurerm_role_assignment" "aks_dev_mi_operator" {
+  count                = var.create_role_assignments ? 1 : 0
   scope                = azurerm_user_assigned_identity.aks_dev.id
   role_definition_name = "Managed Identity Operator"
   principal_id         = azurerm_user_assigned_identity.aks_dev.principal_id
@@ -72,6 +77,7 @@ resource "azurerm_role_assignment" "aks_dev_mi_operator" {
 
 # Managed Identity Operator role for prod AKS on its own identity
 resource "azurerm_role_assignment" "aks_prod_mi_operator" {
+  count                = var.create_role_assignments ? 1 : 0
   scope                = azurerm_user_assigned_identity.aks_prod.id
   role_definition_name = "Managed Identity Operator"
   principal_id         = azurerm_user_assigned_identity.aks_prod.principal_id
