@@ -233,9 +233,10 @@ resource "azurerm_firewall" "main" {
 # DIAGNOSTIC SETTINGS (for logging)
 # -----------------------------------------------------------------------------
 # Sends firewall logs to Log Analytics for monitoring
+# Note: If enable_logs is true, log_analytics_workspace_id must be provided
 
 resource "azurerm_monitor_diagnostic_setting" "firewall" {
-  count = var.enable_logs && var.log_analytics_workspace_id != null ? 1 : 0
+  count = var.enable_logs ? 1 : 0
 
   name                       = "diag-${var.firewall_name}"
   target_resource_id         = azurerm_firewall.main.id
