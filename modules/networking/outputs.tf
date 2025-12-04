@@ -108,12 +108,27 @@ output "dev_route_table_id" {
   value       = azurerm_route_table.dev.id
 }
 
+output "dev_route_table_name" {
+  description = "Dev route table name"
+  value       = azurerm_route_table.dev.name
+}
+
 output "prod_route_table_id" {
   description = "Prod route table ID"
   value       = azurerm_route_table.prod.id
 }
 
+output "prod_route_table_name" {
+  description = "Prod route table name"
+  value       = azurerm_route_table.prod.name
+}
+
 output "shared_route_table_id" {
   description = "Shared route table ID"
   value       = azurerm_route_table.shared.id
+}
+
+output "shared_route_table_name" {
+  description = "Shared route table name"
+  value       = azurerm_route_table.shared.name
 }

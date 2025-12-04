@@ -290,15 +290,8 @@ resource "azurerm_route_table" "dev" {
   disable_bgp_route_propagation = false
 }
 
-# Route for internet-bound traffic from Dev (goes through firewall)
-resource "azurerm_route" "dev_to_internet" {
-  name                   = "route-dev-to-internet"
-  resource_group_name    = var.resource_group_dev
-  route_table_name       = azurerm_route_table.dev.name
-  address_prefix         = "0.0.0.0/0"
-  next_hop_type          = "VirtualAppliance"
-  next_hop_in_ip_address = var.firewall_private_ip
-}
+# Route for internet-bound traffic from Dev will be created in root main.tf
+# to avoid circular dependency between networking and firewall modules
 
 # Associate route table with Dev AKS subnet
 resource "azurerm_subnet_route_table_association" "dev_aks" {
@@ -316,15 +309,8 @@ resource "azurerm_route_table" "prod" {
   disable_bgp_route_propagation = false
 }
 
-# Route for internet-bound traffic from Prod (goes through firewall)
-resource "azurerm_route" "prod_to_internet" {
-  name                   = "route-prod-to-internet"
-  resource_group_name    = var.resource_group_prod
-  route_table_name       = azurerm_route_table.prod.name
-  address_prefix         = "0.0.0.0/0"
-  next_hop_type          = "VirtualAppliance"
-  next_hop_in_ip_address = var.firewall_private_ip
-}
+# Route for internet-bound traffic from Prod will be created in root main.tf
+# to avoid circular dependency between networking and firewall modules
 
 # Associate route table with Prod AKS subnet
 resource "azurerm_subnet_route_table_association" "prod_aks" {
@@ -342,15 +328,8 @@ resource "azurerm_route_table" "shared" {
   disable_bgp_route_propagation = false
 }
 
-# Route for internet-bound traffic from Shared (goes through firewall)
-resource "azurerm_route" "shared_to_internet" {
-  name                   = "route-shared-to-internet"
-  resource_group_name    = var.resource_group_shared
-  route_table_name       = azurerm_route_table.shared.name
-  address_prefix         = "0.0.0.0/0"
-  next_hop_type          = "VirtualAppliance"
-  next_hop_in_ip_address = var.firewall_private_ip
-}
+# Route for internet-bound traffic from Shared will be created in root main.tf
+# to avoid circular dependency between networking and firewall modules
 
 # Associate route table with Shared services subnet
 resource "azurerm_subnet_route_table_association" "shared_services" {
