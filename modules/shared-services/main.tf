@@ -24,8 +24,9 @@ resource "azurerm_container_registry" "main" {
   sku                 = var.acr_sku
   admin_enabled       = false # Use managed identities instead of admin account
 
-  # Enable public network access (will be restricted by private endpoint if enabled)
-  public_network_access_enabled = !var.enable_private_endpoints
+  # Disable public network access only for Premium SKU (Basic/Standard don't support this)
+  # For non-Premium SKUs, public access remains enabled but private endpoints still provide secure access
+  public_network_access_enabled = var.acr_sku == "Premium" ? !var.enable_private_endpoints : true
 
   # Network rule set (only applies if Premium SKU)
   dynamic "network_rule_set" {
